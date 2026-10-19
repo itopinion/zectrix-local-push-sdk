@@ -1,0 +1,15 @@
+/target/
+/dist/
+.DS_Store
+__pycache__/
+*.pyc
+*.log
+*.wav
+*.pcm
+.env
+.env.*
+# Firmware and flashing payloads belong outside this SDK repository.
+/firmware/
+*.bin
+*.exe
+*.dmg

@@ -1,0 +1,124 @@
+{
+  "sdk": "zectrix-sdk",
+  "version": "0.1.0",
+  "repository": "itopinion/zectrix-local-push-sdk",
+  "source_snapshot": "2026-10-16",
+  "prepared_date": "2026-10-19",
+  "matching_firmware_version": "3.7.2",
+  "firmware_included": false,
+  "generated_rustdoc_included": false,
+  "files": {
+    ".gitignore": {
+      "size": 173,
+      "sha256": "3ed2dc86108865a510a04dd82220d205dab0f4b4c06254e741e7e32040a8b899"
+    },
+    "Cargo.lock": {
+      "size": 14851,
+      "sha256": "3f692704bfc4d295f7a681ceb4cd7972e6619eb02a5f73cdf4aa3a128e4f13c0"
+    },
+    "Cargo.toml": {
+      "size": 794,
+      "sha256": "8c5517d5418a795a6c8623b622b5892fc76333e41a02b6c78280a8ac1d619619"
+    },
+    "LICENSE": {
+      "size": 1140,
+      "sha256": "0a5a839033bfe18fe75d32b50d9d028912cf876f69ef59c2791aeb2971335d05"
+    },
+    "LICENSES/Opus-COPYING.txt": {
+      "size": 1928,
+      "sha256": "8338ce8d922bb4416ce3dd1e5680173332435e3f0755007ac7801ccd674fe682"
+    },
+    "README.en.md": {
+      "size": 7350,
+      "sha256": "cd13335e8c37135823ea9eef468b224a81e5cb48919769c75133781dc44ed742"
+    },
+    "README.md": {
+      "size": 6640,
+      "sha256": "48517f4769093bccfff912814442c5e24b30756282cbb25c82f342c656a1b701"
+    },
+    "VALIDATION.json": {
+      "size": 654,
+      "sha256": "4b8f897c2cce8ed1014073bc4a5d19071f3d8cb56e85ca93bb1a29dd8d3a90fa"
+    },
+    "compatibility.json": {
+      "size": 583,
+      "sha256": "8618bc9f5bccf467ea2b536a4a9062a9410135a47e567c84c4d4f23fdd89653c"
+    },
+    "docs/API.en.md": {
+      "size": 9264,
+      "sha256": "e48259b21dbcf6c1f9ff9b3e5063f3a1303d2ee53409a64459459099c7178b0a"
+    },
+    "docs/API.md": {
+      "size": 13205,
+      "sha256": "42723cb96fabefa3cbd6da3df12bf10b1a12fb76dee1b3e4c9ad04dffec417c6"
+    },
+    "docs/FIRMWARE.en.md": {
+      "size": 1597,
+      "sha256": "f654da5bb1fb803f8137d0b9b4e2ce183d2856f6a8a28807d539869f40fa6af0"
+    },
+    "docs/FIRMWARE.md": {
+      "size": 1441,
+      "sha256": "cae787bf2054b3f8bb24336c27a3b9a273b6419bc85222a9d67c06f41b22117c"
+    },
+    "docs/zectrix-lan-v1.html": {
+      "size": 46366,
+      "sha256": "1bc33886caac8dbd1428e09dbc30095a96bb868a744c3f064ddf7db3e6858e00"
+    },
+    "examples/keys.rs": {
+      "size": 756,
+      "sha256": "b96b792f1e06407a5cdac930af0af2c5ec65056194d811e8f84db4ed4e88b891"
+    },
+    "examples/play.rs": {
+      "size": 644,
+      "sha256": "f32429eff4f76e60e9c0fd2647a5e2cc5fe191df343fafe01eec75f2cc66ada1"
+    },
+    "examples/recorder.rs": {
+      "size": 1813,
+      "sha256": "ebd2ce3b909b2930fc87999b92ca4ee167f3fabc3a52f9db24e379bec3980f20"
+    },
+    "examples/show.rs": {
+      "size": 1107,
+      "sha256": "320ebb21c57990829d010acc329ef72f472ff093915c93c8c68e8d088afad9fa"
+    },
+    "examples/status.rs": {
+      "size": 555,
+      "sha256": "96288e9c4d5af7978fc801672f7a591ac73ceeb2c7ddd3816594483ef8c6b844"
+    },
+    "rust-toolchain.toml": {
+      "size": 86,
+      "sha256": "7458b2d74495e6fb1c1edeea4d5a793705476431dadb60627187111f91441e13"
+    },
+    "scripts/verify.py": {
+      "size": 1446,
+      "sha256": "dcb70a48346f009f856228747fcc0f48da554ddd9cb63ed086921bc07123574c"
+    },
+    "src/audio.rs": {
+      "size": 6790,
+      "sha256": "28b3505ec444affdea0c8df583bc9bbc054a59e5418658cc58e1d5ef99742e41"
+    },
+    "src/device.rs": {
+      "size": 29960,
+      "sha256": "1a9039c472471ff9aac8d1115fe8faa1cc7c06e2ebeb742bb8e87130b3059b00"
+    },
+    "src/discovery.rs": {
+      "size": 2625,
+      "sha256": "bf4eb736837e964dbdd66b607902e7753ae6b3eccacd95a2fe17e5d2e8ed931c"
+    },
+    "src/image.rs": {
+      "size": 8316,
+      "sha256": "0b3ba6b89e1e0cc5ba1b8af1002033826785fcfa17b7d8b784e2e4de98ae58a0"
+    },
+    "src/lib.rs": {
+      "size": 4119,
+      "sha256": "24fc8f41f6a5f0e0535a5671212acb29c6d7e1ada19ca957aa877bec6e0972c0"
+    },
+    "src/protocol.rs": {
+      "size": 8043,
+      "sha256": "9762ad63e08370b0a129f5cd6ba9c6a230eeb7e4c218a460766d9b91c8a3d4bf"
+    },
+    "tests/lan.rs": {
+      "size": 15661,
+      "sha256": "40ffdd4a4fb7a5349bb728e06f98736600e2173a8021a207b11b181edafff463"
+    }
+  }
+}

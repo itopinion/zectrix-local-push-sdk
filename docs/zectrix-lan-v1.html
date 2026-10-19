@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="面向普通开发者的 Zectrix PC 控制协议：mDNS 发现、UDP 管理、zlib 图片、Opus 音频、按键采集与本地退出。">
+  <title>Zectrix 局域网发现与 UDP 显示音频协议设计</title>
+  <style>
+    :root { color-scheme: light; --bg:#edf1f5; --paper:#fff; --ink:#243244; --muted:#607085; --line:#dce4ec; --brand:#185979; --soft:#eef6fa; --amber:#885a17; --amber-bg:#fff8e9; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:24px; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.85 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif; }
+    a { color:var(--brand); text-underline-offset:3px; }
+    a:focus-visible, summary:focus-visible { outline:3px solid #3283a8; outline-offset:4px; }
+    .skip { position:fixed; top:-80px; left:12px; z-index:10; padding:8px 14px; background:white; }
+    .skip:focus { top:12px; }
+    .layout { max-width:1460px; margin:auto; display:grid; grid-template-columns:270px minmax(0,1fr); gap:28px; padding:28px; align-items:start; }
+    .sidebar { position:sticky; top:24px; max-height:calc(100vh - 48px); overflow:auto; padding:22px 16px; border:1px solid var(--line); border-radius:12px; background:var(--paper); }
+    .brand { font-size:13px; letter-spacing:.12em; font-weight:750; color:var(--brand); margin:0 0 4px; }
+    .sidebar-title { margin:0 0 16px; font-size:17px; font-weight:700; line-height:1.5; }
+    summary { cursor:pointer; font-size:14px; color:var(--muted); padding:4px; }
+    nav ol { list-style:none; padding:0; margin:10px 0 0; }
+    nav li { margin:2px 0; }
+    nav a { display:block; padding:6px 8px; border-radius:6px; font-size:13px; line-height:1.6; text-decoration:none; color:var(--ink); }
+    nav a:hover { background:var(--soft); color:var(--brand); }
+    .nav-note { border-top:1px solid var(--line); padding-top:14px; margin:16px 4px 0; font-size:12px; line-height:1.8; color:var(--muted); }
+    main { min-width:0; }
+    header, section { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:34px 40px; margin-bottom:22px; }
+    header { border-top:5px solid var(--brand); padding-top:30px; }
+    .eyebrow { color:var(--brand); font-size:13px; letter-spacing:.08em; font-weight:700; margin:0 0 12px; }
+    h1 { font-size:clamp(27px,3vw,37px); line-height:1.4; letter-spacing:-.02em; margin:0 0 18px; color:#17394e; }
+    .lead { font-size:18px; line-height:1.85; margin:0 0 20px; }
+    .meta { display:flex; gap:8px; flex-wrap:wrap; }
+    .meta span { font-size:12px; color:var(--brand); background:var(--soft); border:1px solid #d8e9f1; border-radius:20px; padding:3px 11px; }
+    h2 { font-size:25px; line-height:1.5; color:#17394e; margin:0 0 22px; }
+    h2 .num { color:#7998ac; font-size:17px; margin-right:10px; font-weight:500; }
+    h3 { font-size:18px; line-height:1.6; margin:28px 0 12px; color:var(--brand); }
+    p { margin:12px 0; }
+    ul, ol { padding-left:24px; margin:12px 0; }
+    li { margin:5px 0; }
+    strong { font-weight:700; color:#183e55; }
+    .note, .caution { padding:15px 18px; border-left:4px solid #5795b3; background:var(--soft); margin:20px 0; border-radius:0 7px 7px 0; }
+    .caution { background:var(--amber-bg); border-color:#d8ab55; }
+    .note p, .caution p { margin:0; }
+    .caution strong { color:var(--amber); }
+    .table-wrap { max-width:100%; overflow-x:auto; margin:16px 0 22px; border:1px solid var(--line); border-radius:8px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.75; text-align:left; }
+    th { background:#eef3f7; color:#24485e; font-weight:700; }
+    th, td { padding:11px 13px; border-bottom:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere; }
+    tbody tr:last-child td { border-bottom:0; }
+    tbody tr:nth-child(even) { background:#fafcfd; }
+    .term { font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.9em; overflow-wrap:anywhere; color:#245979; }
+    .flow { display:flex; align-items:stretch; gap:8px; flex-wrap:wrap; margin:20px 0; }
+    .step { flex:1 1 125px; padding:14px 12px; background:var(--soft); border:1px solid #d7e6ee; border-radius:8px; text-align:center; font-size:14px; }
+    .step b { display:block; color:var(--brand); }
+    .step small { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+    .arrow { align-self:center; color:#7e99a9; font-size:20px; }
+    .caption { color:var(--muted); font-size:13px; }
+    .source { font-size:13px; color:var(--muted); }
+    .section-end { text-align:right; margin:24px 0 0; font-size:12px; }
+    footer { padding:8px 8px 28px; font-size:13px; color:var(--muted); text-align:center; }
+    section:target { border-color:#75a7bf; }
+    @media (min-width:1450px) { .layout { grid-template-columns:280px minmax(0,1fr); gap:32px; } }
+    @media (max-width:1000px) { .layout { grid-template-columns:230px minmax(0,1fr); gap:18px; padding:18px; } header,section { padding:27px; } }
+    @media (max-width:760px) {
+      .layout { display:block; padding:12px; }
+      .sidebar { position:static; max-height:none; margin-bottom:16px; padding:16px; }
+      .sidebar-title { margin-bottom:8px; }
+      nav ol { max-height:240px; overflow:auto; }
+      .nav-note { margin-top:10px; padding-top:10px; }
+      header,section { padding:24px 20px; border-radius:9px; margin-bottom:16px; }
+      h2 { font-size:22px; } .lead { font-size:16px; }
+      th,td { padding:9px 10px; } table { font-size:13px; min-width:430px; }
+      .flow { flex-direction:column; } .step { flex-basis:auto; } .arrow { transform:rotate(90deg); line-height:1; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    @media print {
+      @page { size:A4; margin:17mm 15mm; }
+      body { background:white; font-size:10.5pt; line-height:1.7; color:#111; }
+      .layout { display:block; padding:0; max-width:none; }
+      .sidebar,.skip,.section-end { display:none; }
+      header,section { padding:0; border:0; border-radius:0; margin:0 0 22pt; }
+      header { padding-bottom:15pt; border-bottom:1px solid #aaa; }
+      h1 { font-size:23pt; } h2 { font-size:17pt; } h3 { font-size:12pt; }
+      h2,h3 { break-after:avoid; } p,li { orphans:3; widows:3; }
+      .lead { font-size:12pt; } .meta span { border-color:#aaa; }
+      .table-wrap { overflow:visible; border-radius:0; }
+      table { font-size:9pt; min-width:0; } th,td { padding:6pt; }
+      thead { display:table-header-group; } tr { break-inside:avoid; }
+      .flow,.note,.caution { break-inside:avoid; }
+      a { color:inherit; } .source { font-size:9pt; }
+      footer { padding:0; font-size:9pt; }
+    }
+  </style>
+</head>
+
+<body>
+<a class="skip" href="#content">跳到正文</a>
+<div class="layout">
+  <aside class="sidebar" id="toc">
+    <p class="brand">ZECTRIX · LAN v1</p>
+    <p class="sidebar-title">PC 控制入口<br>协议与流程设计</p>
+    <details open>
+      <summary>阅读目录</summary>
+      <nav aria-label="文档目录"><ol>
+        <li><a href="#scope">01　范围与基本约定</a></li>
+        <li><a href="#connection">02　发现、连接与退出</a></li>
+        <li><a href="#wire">03　报文与消息</a></li>
+        <li><a href="#reliability">04　确认、保活与错误</a></li>
+        <li><a href="#images">05　zlib 图片传输</a></li>
+        <li><a href="#audio">06　按键采集与音频播放</a></li>
+        <li><a href="#states">07　状态机与设备 UI</a></li>
+        <li><a href="#validation">08　参数与交互</a></li>
+      </ol></nav>
+    </details>
+    <p class="nav-note">离线单文件 · 支持查找与打印<br>仅含协议和流程，无参考代码</p>
+  </aside>
+  <main id="content">
+    <header id="top">
+      <p class="eyebrow">面向普通开发者的 PC 控制入口</p>
+      <h1>Zectrix 局域网发现与<br>UDP 显示音频协议</h1>
+      <p class="lead">PC 显式连接后接管显示和音频路由。图片使用 zlib 压缩的黑白、四灰或十六灰像素，声音使用 Opus 流；远程模式下确认键长按触发采集、松开停止，其余单键动作通过 KEY 事件交给 PC，PC 保活维持管理权。设备长按退出后，必须由 PC 重新发起连接。</p>
+      <div class="meta"><span>v1.5</span><span>16 字节公共头</span><span>zlib 图片 · Opus 音频</span><span>PC 保活 · 本地退出</span></div>
+      <div class="note"><p>本文说明 Zectrix LAN 协议，文档版本 v1.5，线协议主版本为 1。请使用配套固件与 SDK。</p></div>
+    </header>
+
+    <section id="scope">
+      <h2><span class="num">01</span>范围与基本约定</h2>
+      <p>为局域网中的桌面程序和 SDK 提供直接控制设备的入口。设备提供 UDP 服务，无需连接 PC 服务器；同一时刻只有一个管理 PC。</p>
+      <div class="table-wrap"><table><thead><tr><th>功能</th><th>约定</th></tr></thead><tbody>
+        <tr><td>发现</td><td>mDNS 按需查询，也可指定 IP</td></tr>
+        <tr><td>管理</td><td>PC 连接后接管业务显示、扬声器及麦克风数据去向</td></tr>
+        <tr><td>图片</td><td>400×300、1/2/4bpp、zlib 压缩；完整校验后显示</td></tr>
+        <tr><td>音频</td><td>Opus、16 kHz、单声道、60 ms；统一实时流</td></tr>
+        <tr><td>采集</td><td>远程模式下确认键长按达到 1000 ms 才开始，松开停止；数据只发给管理 PC</td></tr>
+        <tr><td>按键事件</td><td>确认键短按、上／下键短按与长按通过 KEY 上报 PC；正常模式使用独立的原有处理</td></tr>
+        <tr><td>失联</td><td>PC 每 5 秒保活，设备 15 秒未收到新保活则退出管理</td></tr>
+        <tr><td>本地退出</td><td>同时长按上、下键 3 秒；PC 必须显式重新连接</td></tr>
+      </tbody></table></div>
+      <p>SDK 负责图片转换与压缩、音频文件转码、收发与重试，用户只操作连接、显示、播放和输入订阅。订阅麦克风不主动开启录音；每次有效的确认键长按产生独立语音段，确认键短按只产生 KEY 事件。</p>
+      <p>本版固定当前设备格式，不做账号鉴权、加密、通用任务平台、多客户端排队、文件存储、多种编解码协商或全双工。PC 可播放文件，但 SDK 将其转成实时 Opus 流；丢包时允许补偿，不承诺逐帧无损送达。</p>
+      <p>远程期间暂停云端语音、普通提示音、轮播及自动跳页对音频和显示的竞争；后台数据同步可继续。系统关机、恢复出厂和本地退出始终优先。系统事件的优先级不表示远程按键可以落入正常模式的关机、恢复出厂或其他业务回调。</p>
+    </section>
+
+    <section id="connection">
+      <h2><span class="num">02</span>发现、连接与退出</h2>
+      <h3>发现</h3>
+      <p>发布 <span class="term">_zectrix._udp.local.</span>，默认业务端口 32342，以 SRV 记录为准。TXT 仅放稳定设备 ID、型号和协议主版本，不放电量或播放状态。</p>
+      <p>联网时正常探测名称并公告，稳定运行时以监听响应为主，不额外周期报在线。SDK 只在用户发现设备或地址失效时浏览，缓存地址后使用单播。默认发现窗口 5 秒，允许延长；查不到不等于设备已关机。</p>
+      
+      <h3>一个连接编号即可</h3>
+      <p>设备启动时生成非零随机 64 位 connection_id。空闲时它是本次连接可使用的编号，接管成功后继续作为当前会话编号；退出、接管失败或重启后更换。它用于隔离旧数据，不是鉴权凭据。稳定设备 ID 仅用于发现和确认设备身份，不放进每个数据包。</p>
+      <div class="flow" aria-label="连接过程"><div class="step"><b>用户点连接</b><small>SDK 准备接收端点</small></div><span class="arrow" aria-hidden="true">→</span><div class="step"><b>INFO</b><small>取得当前连接编号</small></div><span class="arrow" aria-hidden="true">→</span><div class="step"><b>CONNECT</b><small>绑定 PC，显示管理提示</small></div><span class="arrow" aria-hidden="true">→</span><div class="step"><b>PALETTE</b><small>读取设备色板</small></div><span class="arrow" aria-hidden="true">→</span><div class="step"><b>连接成功</b><small>PC 开始保活</small></div></div>
+      <ol>
+        <li>SDK 查询 INFO，确认设备身份、当前状态及连接编号。</li>
+        <li>显式发送 CONNECT，带该编号和 PC 显示名称。设备忙碌、正在退出或退出键未释放时直接拒绝，不排队。</li>
+        <li>设备收尾本地音频，绑定请求源 IP、端口，暂停业务显示竞争，显示远程管理提示；完成后回复成功；SDK 随后查询 PALETTE，读取并校验色板后才报告已连接。</li>
+        <li>PC 持续保活；图片、播放及每段采集均使用同一管理连接。</li>
+      </ol>
+      <p>CONNECT 重传保持原编号、序号和内容；准备中不重复执行，成功后可重发原响应。其他 PC 不能抢占。连接准备失败或超时后更换编号，本次请求失效。模式切换时取消旧模式的待判定动作和计时，所有按键稳定释放后才接受新模式的新按压；过渡期间保留设备端组合退出入口，不补发普通 KEY，也不启动语音。</p>
+      <h3>退出不能触发自动接管</h3>
+      <ol>
+        <li>设备长按退出、PC CLOSE、保活超时或网络丢失时，立即撤销所有者并更换连接编号。</li>
+        <li>停止旧音频，取消未完成图片；物理刷新已开始则安全收尾，旧回调不能恢复远程状态。</li>
+        <li>恢复本地音频路由和页面，按需刷新退出提示。按键仍按住则等待释放，不把同一段改发云端。</li>
+        <li>尽力向旧 PC 发送 CLOSE 通知及原因，不等待确认才退出。UDP 与 mDNS 可继续监听。</li>
+      </ol>
+      <div class="caution"><p><strong>SDK 进入“需要重新连接”，停止旧请求和保活。</strong>重新发现、网络恢复、重建端口均不能自动接管。只有用户或上层应用新的显式连接操作，才可查询新编号并发送新 CONNECT；不能在退出回调里自动换编号重连。</p></div>
+      <p>设备对旧编号先判无效，再考虑重复响应缓存，因此旧 CONNECT、旧成功响应、旧保活均不能复活会话。编号变化后，同一次连接操作不得自动查询新编号重试。连接编号挡住旧包，SDK 的显式连接规则挡住自动生成的新申请。</p>
+    </section>
+
+    <section id="wire">
+      <h2><span class="num">03</span>报文与消息</h2>
+      <p>所有业务消息使用二进制；多字节整数采用网络字节序。每个 UDP 数据报只放一个消息，负载含公共头不超过 1200 字节，UDP 校验和开启。</p>
+      <div class="table-wrap"><table><thead><tr><th>公共字段</th><th>字节</th><th>含义</th></tr></thead><tbody>
+        <tr><td>magic</td><td>2</td><td>固定 ASCII 字节 ZL</td></tr>
+        <tr><td>version</td><td>1</td><td>固定为 1</td></tr>
+        <tr><td>type</td><td>1</td><td>消息类型；最高位为响应标记</td></tr>
+        <tr><td>connection_id</td><td>8</td><td>当前连接编号；INFO 请求为 0</td></tr>
+        <tr><td>sequence</td><td>4</td><td>请求关联或数据序号，按类型解释</td></tr>
+      </tbody></table></div>
+      <p>公共头共 16 字节。长度从 UDP 数据报取得；不重复传启动标识、请求 ID、头长、负载长和保留字段。图片和音频的数据包额外带 4 字节传输／流 ID。</p>
+      <div class="table-wrap"><table><thead><tr><th>类型值</th><th>消息</th><th>必要负载与作用</th></tr></thead><tbody>
+        <tr><td>1</td><td>INFO</td><td>请求无负载；响应给出设备身份、管理状态、固定显示与提示区信息，响应头带当前连接编号</td></tr>
+        <tr><td>2</td><td>CONNECT</td><td>1 字节名称长度及最多 48 字节 UTF-8 PC 名称</td></tr>
+        <tr><td>3</td><td>PING</td><td>无负载；仅维护当前管理权</td></tr>
+        <tr><td>4</td><td>CLOSE</td><td>1 字节原因；PC 主动释放，或设备通知已退出</td></tr>
+        <tr><td>5</td><td>IMAGE_BEGIN</td><td>u8 bpp（1=黑白、2=四灰、4=十六灰）+ u16 压缩长度；本消息序号即图片 ID</td></tr>
+        <tr><td>6</td><td>IMAGE_DATA</td><td>图片 ID 4 字节 + 最多 1024 字节数据；头部序号为块号</td></tr>
+        <tr><td>7</td><td>IMAGE_STATUS</td><td>图片 ID 4 字节；响应返回接收／刷新／完成状态和 64 位接收位图</td></tr>
+        <tr><td>8</td><td>AUDIO_BEGIN</td><td>1 字节音量，0～100；设备上行为 0 并忽略。本消息序号即流 ID</td></tr>
+        <tr><td>9</td><td>AUDIO_DATA</td><td>流 ID 4 字节 + 一个 Opus 包；头部序号为帧号</td></tr>
+        <tr><td>10</td><td>AUDIO_END</td><td>流 ID 4 字节、总帧数 4 字节、末帧有效采样数 2 字节、结束原因 1 字节</td></tr>
+        <tr><td>11</td><td>AUDIO_STOP</td><td>流 ID 4 字节；提前终止指定流，不开启新采集</td></tr>
+        <tr><td>12</td><td>STATE</td><td>查询当前管理、图片和音频状态，以及最近各一项图片／播放结果</td></tr>
+        <tr><td>13</td><td>RESULT</td><td>原开始序号 4 字节、对象类型 1 字节、结果 1 字节；通知显示或播放完成／失败</td></tr>
+        <tr><td>14</td><td>KEY</td><td>2 字节：key（上=1、下=2、确认=3）与 action（短按=1、长按=2）；仅远程模式向管理 PC 上报</td></tr>
+        <tr><td>15</td><td>STATUS</td><td>请求无负载；查询电量百分比、充电状态与 Wi-Fi RSSI。仅当前远程管理 PC 可查询，使用只读查询序号。</td></tr>
+        <tr><td>16</td><td>PALETTE</td><td>请求无负载；成功响应为结果码 + 四灰 4 个亮度字节 + 十六灰 16 个亮度字节，共 21 字节。只读查询，不改变显示。</td></tr>
+      </tbody></table></div>
+      <p>除 DATA 两类外，响应均为原 type 设置最高位，回显 sequence 和 connection_id；INFO 响应的编号例外，返回设备当前值。负载首先放 1 字节结果码，再放该查询所需数据。PING 成功响应只需该结果码，不另传时间戳、代次或任务状态。响应本身不再要求确认。</p>
+      <p>INFO 与 STATE 是只读操作，不取得管理权。其他请求和媒体均校验连接编号、所有者端点及当前状态。退出后的 CLOSE 确认可作为有限收尾处理，不恢复旧会话。畸形长度、非本协议包直接丢弃。</p>
+      <p>KEY 使用现有设备事件序号、响应和重试规则，PC 回复类型 0x8E 并回显连接编号与序号。重复 KEY 仍需确认，但 SDK 对用户只回调一次；退出后停止旧 KEY 重试，不向新连接补发。无需新增事件 ID、按压时长或时间戳。</p>
+      <h3>v1 固件固定响应布局</h3>
+      <p>以下字段按列出的顺序连续编码，无对齐填充。u8、u16、u32、u64 分别为 1、2、4、8 字节无符号整数；多字节整数均为网络序。所有响应先放 u8 结果码；失败响应只有结果码，不附查询数据。</p>
+      <div class="table-wrap"><table><thead><tr><th>响应</th><th>成功结果码之后的字段</th></tr></thead><tbody>
+        <tr><td>INFO</td><td>u8 管理状态；u8 设备 ID 长度及对应 ASCII 字节；u8 型号长度及对应 UTF-8 字节；u16 宽、u16 高、u16 提示区 x、y、宽、高。当前 ID 为小写无分隔符的 12 位 Wi-Fi MAC，型号为 zectrix-s3-epaper-4.2，尺寸为 400、300、0、0、0、0。</td></tr>
+        <tr><td>IMAGE_STATUS</td><td>u8 图片状态；u64 接收位图。图片 ID 从请求取得。可查询最新提交、正在物理刷新或最近完成的图片；未知 ID 返回 INVALID。</td></tr>
+        <tr><td>STATE</td><td>u8 管理状态、u8 图片状态、u8 音频状态；u32 图片 ID、u64 接收位图、u32 当前音频流 ID；u32 最近图片 ID、u8 图片结束原因；u32 最近播放 ID、u8 播放结束原因。不存在的对象 ID 为 0，其结束原因忽略。</td></tr>
+        <tr><td>PALETTE</td><td>成功响应总负载 21 字节：u8 结果码 0；u8 gray4[4]；u8 gray16[16]。数组按灰号排列，亮度为归一化线性亮度，0=本屏黑端点、255=本屏白端点。</td></tr>
+        <tr><td>STATUS</td><td>成功响应总负载 4 字节：u8 结果码 0、u8 电量（0～100，255=未知）、u8 充电（0=否、1=是、255=未知）、i8 Wi-Fi RSSI（-127～0 dBm，127=未知；有符号单字节二进制补码）。不附加其他状态字段。</td></tr>
+      </tbody></table></div>
+      <p>管理状态：0 LOCAL、1 CONNECTING、2 REMOTE、3 EXITING。图片状态：0 无图片、1 RECEIVING、2 REFRESHING、3 DONE、4 FAILED。音频状态：0 空闲、1 播放准备、2 播放（含排空）、3 采集（含准备）、4 采集收尾。RESULT 对象类型：1 图片、2 播放。</p>
+      <p>CLOSE、AUDIO_END、RESULT 和 STATE 中的结束原因统一编码为：0 正常、1 设备主动退出、2 保活超时、3 网络变化、4 系统中断、5 按键打断、6 采集或时长超限、7 处理失败。RESULT 的结果字节使用该结束原因；0 才表示正常完成。普通控制响应仅带结果码，设备事件的确认也仅带结果码 0。</p>
+      <p>mDNS TXT 固定使用 id、model、version 三个键，version 为字符串 1。固件在接管期间临时保持 Wi-Fi 待机能力，不更改用户保存的待机设置；退出后恢复原设置。空闲监听及 PING 不申请常驻唤醒锁。</p>
+      <p>控制序号、PING 序号、只读查询序号和每条流的数据序号分别计数；各发送方向独立。控制从 1 开始递增，流帧与图片块从 0 开始。图片／流 ID 直接复用相应 BEGIN 的控制序号，不再分配任务 ID。控制或保活序号耗尽前结束连接，流序号耗尽前结束流，不在同一上下文内回绕。</p>
+      <p>STATUS 为兼容扩展，电量查询不修改 INFO 与媒体报文；图片的统一格式见第 05 节。请求须使用当前 connection_id、所有者端点、非零查询序号且处于远程模式；有效响应 type=0x8F。查询不推进控制序号、不延长保活、不触发采样或应用层唤醒。电量来自最近一次 ADC 采样缓存，待机不强制更新；Wi-Fi 只读取已关联 AP，不扫描。SDK 按需查询、约 5 秒超时，建议轮询间隔至少 30 秒。旧固件会忽略新类型而超时，其他接口仍可使用。</p>
+    </section>
+
+    <section id="reliability">
+      <h2><span class="num">04</span>确认、保活与错误</h2>
+      <h3>只保留三种可靠性处理</h3>
+      <div class="table-wrap"><table><thead><tr><th>内容</th><th>处理</th></tr></thead><tbody>
+        <tr><td>控制、KEY、开始／结束和最终结果</td><td>响应确认、同序号有限重传；相同请求不重复执行</td></tr>
+        <tr><td>图片数据</td><td>64 位接收位图，缺哪块补哪块，不逐块确认</td></tr>
+        <tr><td>实时音频</td><td>序号重排、丢包补偿、丢弃过期包，不逐帧确认或重传</td></tr>
+      </tbody></table></div>
+      <p>PC 同一时间只等待一个普通状态修改命令的响应，图片数据与音频数据不受此限制。CLOSE、STOP 可以优先发送更高控制序号；旧的未执行命令随后被拒绝。PING 和只读查询不推进控制序号，不会使在途控制失效。</p>
+      <p>设备为 PC 的状态修改命令保留控制高水位及少量重复响应记录。重复包返回原结果；记录已覆盖的旧序号返回 OLD_REQUEST，绝不重新执行。同序号不同内容返回 INVALID。SDK 对设备事件按对象和序号去重，不因较新的 KEY 或 RESULT 先到而丢弃另一对象的有效事件，也不能把已经结束的流重新开启。</p>
+      <p>待机请求初始等待建议 1500 ms，超时退避，总请求期限 15 秒；连接准备最多 10 秒。未收到最终结果时可查询 STATE 或当前 IMAGE_STATUS，但不能换序号自动重新播放或刷图。STATE 只保留当前和最近结果，查不到就报告结果未知，不建立长期任务历史。</p>
+      <h3>PC 保活</h3>
+      <p>PC 在整个远程管理期间每 5 秒发送新 PING，包括没有录音、播放和图片更新时。设备进入 REMOTE 时启动首个 15 秒期限，此后仅在连接仍有效且序号更新时续期，15 秒无新 PING 退出。重复 PING 可重复回复，但不延长期限；重复 CONNECT 也不续期。</p>
+      <p>PC 15 秒没有收到匹配新 PING 的成功确认，也结束本次连接并等待显式重连。单次丢包不立即退出；音频包、普通命令和设备单方面持续上传不能代替保活。到期先退出，迟到 PING 不能复活连接。</p>
+      <p>设备只应答，不主动维持第二套心跳。确认和续期不刷新 UI、不打开音频、不持有持续唤醒锁。SDK 的连接对象负责保活，设备收到的是“PC 仍管理我”，而不是“某一段录音仍在继续”。</p>
+      <h3>有限结果集</h3>
+      <p>响应结果码固定为：0 OK、1 BUSY、2 INVALID、3 STALE、4 FAILED、5 OLD_REQUEST。STALE 表示连接无效，SDK 停止旧管理操作；OLD_REQUEST 只终止对应旧请求，不解除当前连接。忙碌不排队自动执行。具体结束原因放在 CLOSE、AUDIO_END 或 RESULT 中，限定为正常、设备主动退出、保活超时、网络变化、系统中断、按键打断、采集超限及处理失败。</p>
+      <p>确认等待不阻止浅睡眠，最终通知最多重传到 15 秒。设备本地退出立即生效，即使 CLOSE 通知丢失，PC 后续的旧请求也无效。</p>
+    </section>
+
+    <section id="images">
+      <h2><span class="num">05</span>zlib 图片传输</h2>
+      <p><strong>远端只声明图片位深，不指定刷新方式。</strong>IMAGE_BEGIN 的负载固定 3 字节：u8 bpp + u16 compressed_size；不含显示模式切换命令或 refresh 字段。远端完成缩放、灰阶量化与抖色，传完整 zlib 二进制；设备校验后根据位深和显示历史自动选择波形。</p>
+      
+      <div class="table-wrap"><table><thead><tr><th>项目</th><th>固定规则</th></tr></thead><tbody>
+        <tr><td>原图</td><td>400×300，逐行存储；bpp=1/2/4 对应每行 50/100/200 字节，总计 15000/30000/60000 字节</td></tr>
+        <tr><td>位序与颜色</td><td>最高位像素在左；1bpp 为 0=白、1=黑；2bpp 为 0=黑…3=白；4bpp 为 0=黑…15=白（高半字节像素在前）</td></tr>
+        <tr><td>压缩</td><td>完整 zlib 流，DEFLATE、无预设字典；SDK 默认压缩等级 6</td></tr>
+        <tr><td>长度上限</td><td>压缩长度 1～65535 字节；解压必须恰好为 15000 × bpp 字节</td></tr>
+        <tr><td>分块</td><td>每块 1024 字节，最后一块可较短，共 1～64 块</td></tr>
+        <tr><td>完整性</td><td>UDP 校验和、zlib 自带 Adler-32 和输出长度检查，不叠加 MD5、SHA 或图片 CRC32</td></tr>
+      </tbody></table></div>
+      <p>传完整画布，SDK 根据 INFO 返回的区域布局内容。当前固件开放完整 400×300 画布，INFO 的保留区域为 0、0、0、0；远程画面的顶部像素完整保留，没有固定标题栏或留白。首次连接且尚未收到画面时，设备使用自带字体显示默认远程页面。画面留白也参与 zlib 压缩，不另定义裁剪传输、差分图片或多种压缩格式。</p>
+      <p>远程期间的待办提醒以顶部通知覆盖层呈现，不退出远程模式、不切换本地页面。有声提醒同步播放设备提示音；若正在播放远程音频，以现有本地中断原因码 5 结束该播放，SDK 返回 Interrupted。提示音播放期间新的远程播放请求返回 Busy。录音中或确认键仍按住时延后提醒。通知约 12 秒后自动收起，或按确认键收起并停声；收起不会完成待办，待办重试规则保持不变。通知期间仍接收远程画面，收起后恢复最新画面；IMAGE 的成功结果表示刷新完成，通知可能仍覆盖其中一部分。</p>
+      <p>格式错误明确报错：IMAGE_BEGIN 长度不为 3、bpp 不为 1/2/4 或压缩长度为 0，返回 INVALID；分片编号或长度错误不接收，重复分片内容冲突使图片失败。zlib 校验失败、截断、尾随数据、输出长度不匹配均使 IMAGE_STATUS=FAILED，并通过 RESULT 返回失败。校验成功之前不修改显示模式、底图、旧图基准或维护计数。像素数据没有 PNG/JPEG 文件头；同长度但错误位序或极性的内容无法自动识别，须遵循打包规则。</p>
+      <p>设备根据图片位深和显示状态自动选择刷新方式，并在需要时清残影。首次显示或切换位深可能耗时较长；相同图片可能跳过刷新。远端不指定波形或维护参数。</p>
+      <h3>设备色板 PALETTE（type=16 / 0x10）</h3>
+      <p>请求使用当前 connection_id、非零只读查询 sequence，负载为空；响应 type=0x90，回显连接编号和序号。仅当前所有者可查询，接管准备/退出期间返回 BUSY，非空请求负载返回 INVALID，没有可用色板返回 FAILED；失败响应仅 1 字节结果码。其他端点不响应，旧连接返回 STALE。查询不推进控制序号、不延长保活、不采样硬件、不刷新屏幕。</p>
+      <p>设备在连接准备完成时固定本连接色板。SDK 在 CONNECT 成功后查询一次，严格校验 21 字节长度、首项为 0、末项为 255、各表非递减；允许重复亮度，不能按亮度重新排列灰号。SDK 读取超时、设备报错或色板非法时连接失败并发送 CLOSE 释放管理权，不回退到电脑端默认值。重新连接重新读取，不增加版本号或协商报文。</p>
+      <pre>成功响应负载（偏移从 0 开始）：
+0       result: u8 = 0
+1..4    gray4:  u8[4]
+5..20   gray16: u8[16]
+</pre>
+      <p>色板值表示 0～255 的线性亮度，下标为显示灰号，以连接时查询结果为准，不能写死在应用中。同一位深的不同刷新方式共用色板。黑白使用固定端点，不额外传色板；图片仅声明 bpp。</p>
+      <p>SDK 将 PNG 视为 sRGB，解码到线性 RGB 后按 0.2126R+0.7152G+0.0722B 计算亮度，在该线性域合成白底、选择最近的设备色板亮度，并用“输入亮度－选中灰号的色板亮度”做 Floyd–Steinberg 误差扩散。相同距离或重复亮度取最小灰号。线性亮度用 0～255 表示，SDK 内部保持浮点精度；sRGB 128 约对应线性亮度 55，不能直接当作色板亮度 128。</p>
+      <h3>一次显示流程</h3>
+      <ol>
+        <li>SDK 使用连接时读取的设备色板完成图片缩放、抖动和压缩，发送 IMAGE_BEGIN，携带 bpp 和压缩长度。</li>
+        <li>设备允许一个物理刷新任务与一张后续图片缓存。屏幕 BUSY 期间可继续接收下一张图片；已有图片正在接收、后续缓存已满或正在录音时返回 BUSY。</li>
+        <li>SDK 按受控节奏发送 IMAGE_DATA，建议初始块间隔 2 ms；不用逐块等待 ACK。</li>
+        <li>本批发送后查询 IMAGE_STATUS。接收位图的位 n 表示第 n 块已经收到；SDK 只补缺块。丢包增多时放慢发送，超时退避。</li>
+        <li>设备收齐后验证完整 zlib 流、校验值、输入消耗及解压长度；屏幕空闲时自动显示，屏幕忙时保留已校验图片，当前刷新结束后再取缓存显示；不需要额外 COMMIT。</li>
+        <li>设备发送 RESULT，区分已显示与失败。SDK 确认；通知丢失时查询 IMAGE_STATUS 或 STATE，不重建图片任务。</li>
+      </ol>
+      <p>IMAGE_STATUS 状态为 RECEIVING、REFRESHING、DONE 或 FAILED；位图以网络序 64 位整数表示，最低位对应块 0。SDK 合并收到的位图，乱序响应不能把已确认块变成未收到。尾块长度必须与总长度一致，未使用位为 0。</p>
+      <p>接收 15 秒无进度或总计 30 秒未完成则失败并释放缓冲，重复块不计新进度。已收齐进入刷新的图片不再适用传输超时，按显示驱动的有限执行期限处理。REFRESHING 同时表示已校验等待屏幕空闲或正在物理刷新；查询与 RESULT 均按图片 ID 区分。设备仅保留一个后续缓存，不无限排队。SDK 可并发提交两次 show，串行传输、重叠接收和显示；更高频更新由调用方合并尚未提交的图片。物理刷新超过 30 秒则退出连接，丢弃后续缓存，避免在驱动仍忙时继续派发；SDK 对已收齐图片最多等待 60 秒（含排队）。</p>
+      <p>坏图和不完整图不刷新；最终合成画面相同且显示状态可信时可直接成功。退出管理先作废连接，已开始的物理刷新安全收尾后恢复本地页，旧显示完成回调不得重新进入远程管理。</p>
+      
+    </section>
+
+    <section id="audio">
+      <h2><span class="num">06</span>按键采集与音频播放</h2>
+      <p>上下行共用 Opus、16 kHz、单声道、60 ms，每帧 960 个采样。方向由发送方确定；每包一帧，附带流 ID 和帧序号。格式不逐包重复，采样位置由帧序号乘 960 得出，无需单独时间戳。本版不做应用层静音删帧。</p>
+      <h3>设备按键采集</h3>
+      <ol>
+        <li>确认键按下只开始远程模式的长短按判定，不开麦克风，也不打断 PC 播放。未满 1000 ms 就松开时，只上报确认键短按 KEY。</li>
+        <li>确认键连续按住达到 1000 ms，且仍处于同一次远程管理时，消费本次长按、创建语音流 ID 并固定接收 PC；若正在播放，此时才停止播放并废弃旧流。</li>
+        <li>准备录音时显示白底黑字、2px 圆角边框的顶部单行提示“正在聆听 / 松开结束”，复用本地语音输入的内置 beep.ogg 提示音，沿用当前音量。输入在提示音及 DMA 排空期间保持关闭；喇叭关闭且确认键仍按住后，才开始采集并发送 AUDIO_BEGIN 和 AUDIO_DATA。准备期间松开或退出会取消启动，不等待每段远程应用批准或开始通知确认。</li>
+        <li>SDK 可根据当前连接和新流 ID 先接收先到的音频，再合并迟到的开始通知；缓冲有上限。</li>
+        <li>松开立即停止新采样，关闭输入，有限处理已经采集的尾部，发送 AUDIO_END。</li>
+        <li>远程应用确认结束，按有限尾包窗口完成本段。录音条收起后恢复最新远程画面，不播放结束音；新到期的待办通知延后到录音结束呈现。设备回到远程空闲，管理保活继续。</li>
+      </ol>
+      <p>AUDIO_END 带总帧数及末帧有效采样数：有帧时为 1～960，无帧时两者均为 0。最后不足一帧的采样由编码端补齐，接收端按有效长度裁掉填充。开始与结束可重传，音频包不重传。</p>
+      <p>确认键短按不产生 AUDIO_BEGIN 或 AUDIO_END。达到长按阈值后，若准备完成前已经松开，则取消采集准备，可以返回零帧 AUDIO_END，但不得迟开麦克风，也不得再补发短按 KEY。确认键长按及其释放由音频流程消费，不额外上报 KEY 长按。PC 可用 AUDIO_STOP 中止当前采集，但不能命令开启新采集。连接失效、采集超限或被中止时，按键仍按住则等待释放；同一次按住不自动切到云端。</p>
+      <h3>PC 播放</h3>
+      <p>PC 发送 AUDIO_BEGIN 和音量，设备准备完成回复后开始按 60 ms 节奏发送数据。文件播放同样由 SDK 转码成这一种流，不先传整份文件。正在准备采集、采集或异常等待确认键释放时，播放申请返回 BUSY。确认键尚未达到长按阈值时不占用音频资源；其他 KEY 事件本身不打断播放。</p>
+      <p>发送完毕后 PC 发 AUDIO_END。设备接收有限尾包、播放剩余有效声音，关闭输出并发 RESULT；END 的响应只表示收到结束指令，不代表声音已经播完。AUDIO_STOP 则清空指定流并尽快停止。确认键长按打断后不自动续播，PC 要重新发起播放。</p>
+      <h3>缓冲与旧包</h3>
+      <p>初始播放缓冲 3 帧（180 ms），接收队列上限 6 帧（360 ms），发送端不突发灌入整段音频。迟到帧丢弃，丢失帧使用补偿；连续 3 秒无可用输入且没有有效结束信息则结束播放流。短于 3 帧的声音在 END 到达后按实际帧数播放，不无限等待启动缓冲。普通丢包不解除管理权。</p>
+      <p>每段使用新流 ID，旧流帧不能进入新流；新开始事件不能被旧结束事件覆盖。SDK 按方向记录当前和最近流即可，不保存长期语音任务。麦克风采集与 PC 播放半双工，确认键达到长按阈值后的采集优先。接收或播放异常时停止该流，管理仍由 PING 决定。</p>
+    </section>
+
+    <section id="states">
+      <h2><span class="num">07</span>状态机与设备 UI</h2>
+      <h3>管理状态</h3>
+      <div class="table-wrap"><table><thead><tr><th>状态</th><th>转移条件</th><th>下一状态</th></tr></thead><tbody>
+        <tr><td>LOCAL 本地管理</td><td>显式 CONNECT 有效，系统可接管</td><td>CONNECTING 接管中</td></tr>
+        <tr><td>CONNECTING</td><td>本地收尾、路由和 UI 就绪</td><td>REMOTE，回复连接成功，启动保活期限</td></tr>
+        <tr><td>CONNECTING</td><td>失败、超时或设备退出</td><td>EXITING，旧连接编号作废</td></tr>
+        <tr><td>REMOTE 远程管理</td><td>新有效 PING、采集结束或播放完成</td><td>仍为 REMOTE</td></tr>
+        <tr><td>REMOTE</td><td>本地退出、PC CLOSE、保活超时、断网或系统关键操作</td><td>EXITING，立即更换编号并拒绝旧业务</td></tr>
+        <tr><td>EXITING 退出中</td><td>音频关闭、本地状态恢复</td><td>LOCAL，等待新显式连接</td></tr>
+      </tbody></table></div>
+      <p>SDK 对应为“未连接 → 连接中 → 管理中 → 需要重新连接”。发现和网络恢复只能更新可达性，不能从“需要重新连接”自动进入“连接中”。退出键仍按住时拒绝新接管；UI 故障不能让旧管理权继续有效。</p>
+      <h3>按键模式</h3>
+      <p>仅远程模式发送 KEY。进入或退出远程模式时仍按住的键不会在新模式中补发动作；释放所有按键后，再按一次即可操作。</p>
+      <h3>远程模式按键动作</h3>
+      <div class="table-wrap"><table><thead><tr><th>动作</th><th>触发时机</th><th>远程模式处理</th></tr></thead><tbody>
+        <tr><td>确认键短按</td><td>有效按压未满 1000 ms 即释放</td><td>KEY：key=3，action=1；不开麦克风</td></tr>
+        <tr><td>确认键长按</td><td>连续按住达到 1000 ms</td><td>开始采集，松开结束；不另发 KEY</td></tr>
+        <tr><td>上键短按／长按</td><td>单独按压后释放，按持续时间判定</td><td>KEY：key=1，action=1 或 2</td></tr>
+        <tr><td>下键短按／长按</td><td>单独按压后释放，按持续时间判定</td><td>KEY：key=2，action=1 或 2</td></tr>
+        <tr><td>上下键组合长按</td><td>双键同时按住达到 3 秒</td><td>本地退出，组合涉及的两个单键不再发 KEY</td></tr>
+      </tbody></table></div>
+      <p>上／下键持续不足 1000 ms 为短按，达到或超过为长按；两者均在释放时一次上报，以便优先识别组合退出。形成过上下组合的本轮按压被消费，即使不足 3 秒取消退出，也不补发单键事件。长按不再触发短按，持续按住不循环上报。确认键连续短按分别上报，不沿用正常模式的双击／多击业务。</p>
+      <p>远程 KEY 不执行本地确认、翻页、菜单等动作，也不自动刷新屏幕；远程应用决定其业务含义。待办通知可见时，新按下的确认键整次手势用于收起通知，不上报 KEY，也不启动录音；通知出现前已按住的录音确认键仍按原规则松开结束。正常模式不受这些规则、阈值或上报时机影响。</p>
+      <h3>远程按键与音频状态</h3>
+      <div class="table-wrap"><table><thead><tr><th>状态</th><th>事件</th><th>处理与下一状态</th></tr></thead><tbody>
+        <tr><td>音频空闲／播放</td><td>确认键按下</td><td>按键进入待判定，音频状态不变</td></tr>
+        <tr><td>按键待判定</td><td>未满 1000 ms 松开</td><td>发送确认短按 KEY，音频状态不变</td></tr>
+        <tr><td>按键待判定</td><td>达到 1000 ms 且模式有效</td><td>必要时停止播放，准备输入；仍按住则采集</td></tr>
+        <tr><td>空闲</td><td>PC 播放申请</td><td>准备输出并确认，缓冲后进入播放</td></tr>
+        <tr><td>采集</td><td>确认键松开</td><td>停止新采样、有限尾部收尾，再回空闲</td></tr>
+        <tr><td>准备采集</td><td>确认键松开</td><td>取消准备并收尾；不补发短按，不迟开录音</td></tr>
+        <tr><td>播放</td><td>声音完成或 STOP</td><td>关闭输出，回空闲</td></tr>
+        <tr><td>待判定／准备／采集／播放</td><td>管理失效或故障</td><td>取消判定并收尾；按键仍按住则等待释放，禁止跨模式触发</td></tr>
+        <tr><td>等待释放</td><td>相关按键稳定释放；模式切换时须全部释放</td><td>空闲，下次新按压交给当前模式独立处理</td></tr>
+      </tbody></table></div>
+      <p>所有准备和收尾均有有限期限，不等待 ACK 才关外设。单段默认最多 120 秒；达到上限结束该段并等待松开，但有效管理连接仍保留。采集遇到图片传输时优先停止未完成传输；刷新已不可中断时有限安全协调，无法采集则报告失败，不能在松开后迟开录音。</p>
+      <h3>远程提示与长按退出</h3>
+      <p>进入远程管理且尚无应用画面时显示默认远程页面和退出提示；收到应用画面后整屏由应用控制。通知及录音提示作为临时覆盖层合成，底层完整远程原图保持独立，收起时恢复最新原图。提示按设备运行语言显示，空闲静态留屏，不闪烁、不倒计时、不随 PING 刷新。</p>
+      <div class="table-wrap"><table><thead><tr><th>输入</th><th>行为</th></tr></thead><tbody>
+        <tr><td>单独上键或下键</td><td>暂存长短按判定，释放时发送一次带 action 的 KEY，不执行本地导航</td></tr>
+        <tr><td>上、下键同时按下</td><td>从第二键按下开始计时，消费本轮普通单键事件</td></tr>
+        <tr><td>未满 3 秒任一键松开</td><td>取消退出，等两键释放，不补发导航事件</td></tr>
+        <tr><td>双键连续按住 3 秒</td><td>立即撤销管理，无需 PC 确认；退出提示可等待显示安全收尾</td></tr>
+        <tr><td>退出后仍按住</td><td>不重复触发、不翻页、不重新接管；两键释放后才重新接受输入</td></tr>
+      </tbody></table></div>
+      <p>长按识别在接管中、录音、播放、上传、屏幕 BUSY 及联网浅睡眠时均有效，不被 PC 指令禁用。退出与保活同刻发生时，本地退出优先。恢复本地页时合并“已退出远程管理”提示，不为倒计时或隐藏提示多次刷新。</p>
+    </section>
+
+    <section id="validation">
+      <h2><span class="num">08</span>参数与交互</h2>
+      <div class="table-wrap"><table><thead><tr><th>参数</th><th>初始值</th></tr></thead><tbody>
+        <tr><td>业务端口／UDP 负载上限</td><td>32342／1200 字节</td></tr>
+        <tr><td>PC 保活／两端失联判断</td><td>5 秒／15 秒</td></tr>
+        <tr><td>控制初始等待／请求总期限</td><td>1500 ms／15 秒，失效立即停止重试</td></tr>
+        <tr><td>接管准备／音频准备</td><td>10 秒／5 秒；音频准备从确认长按成立后开始，松开或退出可提前取消</td></tr>
+        <tr><td>远程单键长按阈值</td><td>1000 ms，独立于正常模式配置；确认键到阈值采集，上／下键释放时分类上报</td></tr>
+        <tr><td>KEY 负载</td><td>key 1 字节 + action 1 字节，沿用事件确认和去重</td></tr>
+        <tr><td>图片容量／块长／接收位图</td><td>65535 字节／1024 字节／64 位</td></tr>
+        <tr><td>图片无进度／接收总期限</td><td>15 秒／30 秒</td></tr>
+        <tr><td>音频格式／启动缓冲／队列上限</td><td>16 kHz 单声道 Opus 60 ms／3 帧／6 帧</td></tr>
+        <tr><td>单段时长／结束尾包等待</td><td>默认 120 秒／最多 360 ms，实际播放仍按帧截止时间处理</td></tr>
+        <tr><td>播放输入停滞</td><td>3 秒无可用数据且没有有效结束信息，则关闭该流</td></tr>
+        <tr><td>本地退出／提示区域</td><td>双键同时长按 3 秒／无固定保留区，临时覆盖层</td></tr>
+      </tbody></table></div>
+      <h3>按键交互与待机</h3>
+      <p>远程连接空闲时仍需按协议保活。按键按下后设备提高网络响应速度，松开后保持 3 秒，后续按键重新计时。PING、查询及普通后台推图不延长该时段；到期时已在处理的图片会先完成。SDK 收到 KEY 后可直接更新画面，无需额外设置。</p>
+      <p>刷新方式和清残影由设备决定，按键响应时段不保证首帧一定快刷。设备从待机恢复后的首帧可能耗时较长，应用应等待图片结果。</p>
+      <p class="section-end"><a href="#top">返回开头 ↑</a></p>
+    </section>
+    <footer>Zectrix LAN · v1.5 · 单文件离线阅读</footer>
+  </main>
+</div>
+</body>
+</html>

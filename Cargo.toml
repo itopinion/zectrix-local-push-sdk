@@ -1,0 +1,35 @@
+[package]
+name = "zectrix-sdk"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Zectrix LAN device SDK: images, PCM audio and button events"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+mdns-sd = "0.13"
+image = { version = "0.25", default-features = false, features = ["png"] }
+flate2 = "1"
+opus = "0.3"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+
+[[example]]
+name = "recorder"
+path = "examples/recorder.rs"
+[[example]]
+name = "show"
+path = "examples/show.rs"
+[[example]]
+name = "play"
+path = "examples/play.rs"
+[[example]]
+name = "keys"
+path = "examples/keys.rs"
+
+[[example]]
+name = "status"
+path = "examples/status.rs"

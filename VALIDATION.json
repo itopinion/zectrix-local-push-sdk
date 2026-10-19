@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-19",
+  "platform": "macos-aarch64",
+  "source_snapshot": "2026-10-16 SDK 0.1.0 / FW 3.7.2",
+  "checks": {
+    "source_examples_tests_byte_identical": true,
+    "firmware_and_flash_tools_excluded": true,
+    "local_markdown_links": true,
+    "cargo_test_locked": {
+      "unit_passed": 16,
+      "udp_integration_passed": 10
+    },
+    "cargo_check_locked_examples": true,
+    "cargo_doc_locked_no_deps": true
+  },
+  "environment_note": "Tests used a prepared offline dependency cache and CMAKE_POLICY_VERSION_MINIMUM=3.5; first-time builds may need internet.",
+  "hardware_test_this_extraction": false,
+  "firmware_flashed": false
+}

@@ -1,0 +1,26 @@
+{
+  "sdk": "zectrix-sdk",
+  "sdk_version": "0.1.0",
+  "source_snapshot": "2026-10-16",
+  "matching_firmware_version": "3.7.2",
+  "board": "zectrix-s3-epaper-4.2",
+  "wire_version": 1,
+  "requires": {
+    "canvas": [
+      400,
+      300
+    ],
+    "palette_response_bytes": 21,
+    "image_begin_bytes": 3,
+    "image_receive_bitmap_bits": 64,
+    "bpp": [
+      1,
+      2,
+      4
+    ]
+  },
+  "firmware_included": false,
+  "firmware_update_guide": "https://wiki.zectrix.com/zh/software/firmware",
+  "firmware_update_portal": "https://cloud.zectrix.com/",
+  "hub_required": false
+}
