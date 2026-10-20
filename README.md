@@ -4,7 +4,7 @@
 
 让你的应用或 AI Agent 通过局域网直接连接 ZECTRIX Note 4：推送黑白、四灰阶和十六灰阶图片，播放音频，接收按键及录音。
 
-**不需要安装 ZECTRIX Hub。** 本仓库提供 Rust SDK 源码、五个可编译运行的示例和协议文档，不包含固件二进制、烧录工具、桌面安装程序或 Hub。
+本仓库提供 Rust SDK 源码、五个可编译运行的示例和协议文档，不包含固件二进制、烧录工具或桌面安装程序。
 
 SDK 版本为 **0.1.0**，来源为 **2026-10-16 / 固件 3.7.2** 交付包。Rust crate 名仍为 `zectrix-sdk`，避免现有调用代码改名。此版本尚未发布到 crates.io。
 
@@ -12,11 +12,9 @@ SDK 版本为 **0.1.0**，来源为 **2026-10-16 / 固件 3.7.2** 交付包。Ru
 
 支持设备：**ZECTRIX Note 4（zectrix-s3-epaper-4.2），400×300**。本版本配套固件为 **3.7.2**；不自动承诺其他固件版本兼容，也不适用于 Note 4C。
 
-升级方式与 [ZECTRIX Hub](https://github.com/itopinion/zectrix-hub#固件升级) 一致：使用 Chrome 或 Edge 登录 [极趣云](https://cloud.zectrix.com/)，进入“本地升级”，用 USB 数据线连接 Note 4，选择匹配版本并按官方说明刷写。详见 [固件升级（中文）](docs/FIRMWARE.md) / [Firmware update (English)](docs/FIRMWARE.en.md) 和 [官方固件升级说明](https://wiki.zectrix.com/zh/software/firmware)。
+使用 Chrome 或 Edge 登录 [极趣云](https://cloud.zectrix.com/)，进入“本地升级”，用 USB 数据线连接 Note 4，选择匹配版本并按官方说明刷写。详见 [固件升级（中文）](docs/FIRMWARE.md) / [Firmware update (English)](docs/FIRMWARE.en.md) 和 [官方固件升级说明](https://wiki.zectrix.com/zh/software/firmware)。
 
-升级后让电脑与设备接入可互通的局域网，并在设备进入本地推送模式。默认 UDP 端口为 `32342`，mDNS 服务为 `_zectrix._udp.local.`；发现不可用时可直接指定 IP。允许程序使用系统本地网络权限。
-
-连接阶段会查询设备实际色板。固件必须支持 PALETTE（成功负载 21 字节）、三字节 IMAGE_BEGIN（bpp + 压缩长度）以及 64 位图片接收位图。读取色板失败会明确报错，不猜测色板或自动刷写固件。
+升级后，在设备的“设置 → 网络同步”中启用“待机保持 Wi-Fi”功能。
 
 ## 快速开始
 
@@ -33,7 +31,7 @@ cargo run --locked --example show -- 192.168.1.100 card.png gray16
 
 将示例 IP 替换为自己的设备地址；`card.png` 使用自己的 PNG，推荐 400×300。图片格式可选 `mono`、`gray4`、`gray16`，省略时为黑白。如果本机 CMake 对旧版 Opus 构建脚本报兼容性错误，可设置环境变量 `CMAKE_POLICY_VERSION_MINIMUM=3.5` 后重试。
 
-本仓库当前为私有仓库，克隆需要已获授权的 GitHub 账号。
+本仓库已公开，可直接克隆或下载源码。
 
 ## 在自己的应用中使用
 
@@ -78,21 +76,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 可以把下面这段需求交给自己的 Agent：
 
-> 使用本仓库的 zectrix-sdk 开发一个本地应用，直接连接我指定的 Note 4，无需 Hub。先读 README 和 docs/API.md，用当前目录旁的 SDK 路径依赖构建。生成 400×300 PNG，并按我的要求选择 mono、gray4 或 gray16。保持一个设备连接，持续接收按键事件，由应用管理页面；退出时调用 close。不要自动升级固件，不要连接未指定的其他设备。先通过单元测试和本机 UDP 测试，再根据设备显示完成回执报告推送结果。
+> 使用本仓库的 zectrix-sdk 开发一个本地应用，直接连接我指定的 Note 4。先读 README 和 docs/API.md，用当前目录旁的 SDK 路径依赖构建。生成 400×300 PNG，并按我的要求选择 mono、gray4 或 gray16。保持一个设备连接，持续接收按键事件，由应用管理页面；退出时调用 close。不要自动升级固件，不要连接未指定的其他设备。先通过单元测试和本机 UDP 测试，再根据设备显示完成回执报告推送结果。
 
 ## 运行约定
 
-- 同一设备同时只由一个连接方管理。直连应用与 Hub 不要同时争用同一设备；正常退出调用 `close()`。
+- 同一设备同时只由一个连接方管理。多个应用不要同时争用同一设备；正常退出调用 `close()`。
 - 交互应用需要电脑上的程序持续运行；图片推送成功不等于应用已安装到设备。
 - 提交原始连续色调 PNG；SDK 按设备实际色板转换并抖色，上层不要重复抖色。
 - `show()` 成功表示设备报告显示完成，不仅是上传完成；视觉效果仍需实机观察，系统通知也可能临时覆盖画面。
 - `ResultUnknown` 表示结果未知，不得自动作为新请求重新刷图或播放。`Busy` 由业务决定是否重试。
 - 不自动重新接管断开的设备。无远程启动录音接口；录音由设备按键触发。
 - 音频为 16 kHz、单声道 PCM16。SDK 不包含语音识别、TTS 或大模型。
-
-## 与 Hub 的关系
-
-直接用 SDK：应用负责生成画面、任务逻辑、页面切换和连接生命周期。使用 Hub：Hub 统一管理连接与应用切换，上层应用调用 Hub Runtime API。两种开发路线独立，本 SDK 不依赖 Hub；多应用管理可选用 [Hub](https://github.com/itopinion/zectrix-hub)。
 
 ## 文档与验证
 

@@ -4,7 +4,7 @@
 
 Connect your application or AI agent directly to a ZECTRIX Note 4 over your local network. Send monochrome, 4-level and 16-level grayscale images, play audio, and receive button and recording events.
 
-**ZECTRIX Hub is not required.** This repository contains Rust SDK source, five buildable examples and protocol documentation. It does not distribute device firmware, flashing tools, a desktop installer or Hub.
+This repository contains Rust SDK source, five buildable examples and protocol documentation. It does not distribute device firmware, flashing tools or a desktop installer.
 
 SDK version: **0.1.0**, extracted from the **2026-10-16 / firmware 3.7.2** delivery. The Rust crate remains named `zectrix-sdk` for compatibility. It has not been published to crates.io.
 
@@ -12,11 +12,9 @@ SDK version: **0.1.0**, extracted from the **2026-10-16 / firmware 3.7.2** deliv
 
 Supported device: **ZECTRIX Note 4 (zectrix-s3-epaper-4.2), 400×300**. The matching firmware for this SDK snapshot is **3.7.2**. Compatibility with other versions is not assumed. Note 4C is not supported by this package.
 
-Use the same update route documented by [ZECTRIX Hub](https://github.com/itopinion/zectrix-hub): open [ZECTRIX Cloud](https://cloud.zectrix.com/) in Chrome or Edge, sign in, select **Local Upgrade**, connect Note 4 with a USB data cable, and follow the official instructions for the matching firmware. See [Firmware update](docs/FIRMWARE.en.md), [中文升级说明](docs/FIRMWARE.md), and the [official firmware guide](https://wiki.zectrix.com/zh/software/firmware).
+Open [ZECTRIX Cloud](https://cloud.zectrix.com/) in Chrome or Edge, sign in, select **Local Upgrade**, connect Note 4 with a USB data cable, and follow the official instructions for the matching firmware. See [Firmware update](docs/FIRMWARE.en.md), [中文升级说明](docs/FIRMWARE.md), and the [official firmware guide](https://wiki.zectrix.com/zh/software/firmware).
 
-After updating, put the computer and device on a mutually reachable LAN and enter local push mode on the device. Default UDP port: `32342`; mDNS service: `_zectrix._udp.local.`. Specify the device IP when discovery is unavailable. Grant the application's local-network permission when prompted by your OS.
-
-Connection setup reads the device's actual palette. Firmware must support PALETTE with a 21-byte success payload, three-byte IMAGE_BEGIN (bpp + compressed length), and a 64-bit image receive bitmap. A failed palette query produces an error; the SDK neither guesses a palette nor flashes firmware.
+After updating, enable **Keep Wi-Fi on during standby** (待机保持 Wi-Fi) under **Settings → Network Sync** (设置 → 网络同步) on the device.
 
 ## Quick start
 
@@ -33,7 +31,7 @@ cargo run --locked --example show -- 192.168.1.100 card.png gray16
 
 Replace the example IP with your device address and supply your own PNG, preferably 400×300. The format is `mono`, `gray4` or `gray16`; the default is monochrome. If CMake rejects compatibility settings in the bundled Opus build, set the environment variable `CMAKE_POLICY_VERSION_MINIMUM=3.5` and retry.
 
-This repository is currently private; cloning requires an authorized GitHub account.
+This repository is public. You can clone it or download the source directly.
 
 ## Use from your own application
 
@@ -78,21 +76,17 @@ Long-running applications must also keep consuming `next_event()` to handle butt
 
 Example prompt:
 
-> Build a local application using this repository's zectrix-sdk to connect directly to my specified Note 4, without Hub. Read README.en.md and docs/API.en.md first, and use a path dependency to the adjacent SDK checkout. Generate 400×300 PNGs and use mono, gray4 or gray16 as requested. Keep one device connection, continuously consume button events, manage pages in the application, and call close on exit. Do not update firmware automatically or connect to another device. Run unit and local UDP tests first, then distinguish the device's display-completion acknowledgement from visual validation.
+> Build a local application using this repository's zectrix-sdk to connect directly to my specified Note 4. Read README.en.md and docs/API.en.md first, and use a path dependency to the adjacent SDK checkout. Generate 400×300 PNGs and use mono, gray4 or gray16 as requested. Keep one device connection, continuously consume button events, manage pages in the application, and call close on exit. Do not update firmware automatically or connect to another device. Run unit and local UDP tests first, then distinguish the device's display-completion acknowledgement from visual validation.
 
 ## Runtime behavior
 
-- One controller owns a device at a time. Do not run a direct application and Hub against the same device concurrently. Call `close()` on normal exit.
+- One controller owns a device at a time. Do not run multiple applications against the same device concurrently. Call `close()` on normal exit.
 - Interactive applications need their computer process to remain running. Sending a picture does not install an application on the device.
 - Supply continuous-tone PNGs. The SDK converts and dithers using the device palette; do not pre-dither in the application.
 - A successful `show()` means the device reported display completion, not merely upload completion. Inspect visual quality on the actual screen; system notifications may temporarily overlay it.
 - `ResultUnknown` means the result cannot be confirmed. Do not automatically issue a new display/playback request. The application decides whether to retry `Busy`.
 - The SDK does not automatically reclaim a disconnected device. Recording starts from a physical device gesture; there is no remote-start recording API.
 - Audio uses 16 kHz mono PCM16. Speech recognition, TTS and AI models are not included.
-
-## SDK versus Hub
-
-A direct SDK application manages its content, business logic, page navigation and connection lifecycle. Hub instead manages device ownership and application switching, while hosted apps call its Runtime API. This SDK has no Hub dependency; [Hub](https://github.com/itopinion/zectrix-hub) remains an optional route for managing multiple apps.
 
 ## Documentation and verification
 

@@ -29,12 +29,12 @@
       "sha256": "8338ce8d922bb4416ce3dd1e5680173332435e3f0755007ac7801ccd674fe682"
     },
     "README.en.md": {
-      "size": 7350,
-      "sha256": "cd13335e8c37135823ea9eef468b224a81e5cb48919769c75133781dc44ed742"
+      "size": 6375,
+      "sha256": "94fb0476f14be0a0a6ca26d6ed2d5f2f3bc791f238461820e5f4d2ad98404c5a"
     },
     "README.md": {
-      "size": 6640,
-      "sha256": "48517f4769093bccfff912814442c5e24b30756282cbb25c82f342c656a1b701"
+      "size": 5715,
+      "sha256": "ee0947deba28192d70b07132194c9fc9429f2bb8f0edc553734adf3f833b7dd9"
     },
     "VALIDATION.json": {
       "size": 654,
@@ -45,20 +45,20 @@
       "sha256": "8618bc9f5bccf467ea2b536a4a9062a9410135a47e567c84c4d4f23fdd89653c"
     },
     "docs/API.en.md": {
-      "size": 9264,
-      "sha256": "e48259b21dbcf6c1f9ff9b3e5063f3a1303d2ee53409a64459459099c7178b0a"
+      "size": 9257,
+      "sha256": "ea3bb4b8b321647ad4583a098112f9362714e39dcab5b90ee4f4786ff34dbc29"
     },
     "docs/API.md": {
       "size": 13205,
       "sha256": "42723cb96fabefa3cbd6da3df12bf10b1a12fb76dee1b3e4c9ad04dffec417c6"
     },
     "docs/FIRMWARE.en.md": {
-      "size": 1597,
-      "sha256": "f654da5bb1fb803f8137d0b9b4e2ce183d2856f6a8a28807d539869f40fa6af0"
+      "size": 1556,
+      "sha256": "179eded6e579533415e87060047195a35f572bb2bdc67683aa2eb2fd644a060d"
     },
     "docs/FIRMWARE.md": {
-      "size": 1441,
-      "sha256": "cae787bf2054b3f8bb24336c27a3b9a273b6419bc85222a9d67c06f41b22117c"
+      "size": 1328,
+      "sha256": "fce7e70980fdfccfd9ff270e1850aa67f4017c27806a9eb8d5f07c7ddd6f486d"
     },
     "docs/zectrix-lan-v1.html": {
       "size": 46366,

@@ -30,7 +30,7 @@ let device = Device::open(OpenOptions {
 
 The target may be an IPv4 address, IPv4:port, a 12-character device ID, or omitted. Omitted targets use discovery for approximately five seconds. Addresses belonging to the same device ID are merged. Multiple available devices return `Error::MultipleDevices`; the caller must choose a target. Another controller's device is not taken over.
 
-`client_name` is 1–48 UTF-8 bytes without control characters; the default is `Zectrix Recorder`. `device.summary` contains the actual identity, address and model. Discovery and INFO do not claim management ownership; `open` does. Share one connection using `Arc<Device>` for concurrent operations. Close it normally before another app or Hub takes over. Cancelled or failed setup attempts release prepared ownership on a best-effort basis.
+`client_name` is 1–48 UTF-8 bytes without control characters; the default is `Zectrix Recorder`. `device.summary` contains the actual identity, address and model. Discovery and INFO do not claim management ownership; `open` does. Share one connection using `Arc<Device>` for concurrent operations. Close it normally before another app takes over. Cancelled or failed setup attempts release prepared ownership on a best-effort basis.
 
 The SDK rejects devices with an incompatible reserved display region. A connection reads PALETTE after CONNECT. Missing or invalid palette data fails setup and releases ownership. No guessed fallback is used. Reopening reads a fresh palette.
 
