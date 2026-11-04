@@ -7,6 +7,8 @@ mod audio;
 mod device;
 mod discovery;
 mod image;
+mod invitation;
+pub use invitation::{ConnectionRequest, ConnectionRequestListener, CONNECTION_REQUEST_PORT};
 mod protocol;
 pub use device::Device;
 /// Packed image depth. Refresh waveform and ghost removal are device-managed.
@@ -43,7 +45,7 @@ pub enum Error {
     InvalidImage(String),
     #[error("音频无效：{0}")]
     InvalidAudio(String),
-    #[error("音频不能超过 120 秒")]
+    #[error("音频帧数超出协议计数范围")]
     AudioTooLong,
     #[error("无法确认操作结果，请勿自动重复执行")]
     ResultUnknown,

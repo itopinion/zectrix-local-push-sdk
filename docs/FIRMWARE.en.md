@@ -2,17 +2,22 @@
 
 [简体中文](FIRMWARE.md) | **English** | [Home](../README.en.md)
 
-Official update route: [ZECTRIX Wiki](https://wiki.zectrix.com/zh/software/firmware) → Note 4 → [ZECTRIX Cloud Local Upgrade](https://cloud.zectrix.com/). Firmware and flashing tools are not distributed here.
+SDK **0.2.0** is paired with **NOTE4 firmware 3.7.5 (Simplified Chinese, zh-CN)** for `zectrix-s3-epaper-4.2`, ESP32-S3 with 16 MB internal flash. This package does not support NOTE4C.
 
-This SDK snapshot matches **Note 4 firmware 3.7.2**. This version supports the palette and grayscale protocol. Check explicit compatibility guidance for future versions.
+- [Download full_3.7.5.bin](https://wiki.zectrix.com/downloads/firmware/full_3.7.5.bin)
+- [Web updater](https://zectrix.com/firmware-updater.html) / [Official firmware guide](https://wiki.zectrix.com/zh/software/firmware)
+- [3.7.5 release notes (Chinese)](RELEASE_NOTES_3.7.5.md)
 
-1. Sign in to ZECTRIX Cloud in Chrome or Edge and open **Local Upgrade** (本地升级).
-2. Connect Note 4 using a USB data cable. Choose **Connect device** (连接设备) and select its serial port.
-3. Select the matching Note 4 firmware and click **Load** (加载). Check the model, version and any language options required by the page.
-4. To retain Wi-Fi and other configuration, enable **Keep device data** (保留设备数据) where available.
-5. Choose **Start flashing** (开始刷写), wait for explicit completion in the terminal, then restart. Keep USB connected, the page open and the computer awake throughout.
-6. After updating, enable **Keep Wi-Fi on during standby** (待机保持 Wi-Fi) under **Settings → Network Sync** (设置 → 网络同步) on the device.
+Size: **5,014,576 bytes**. SHA-256:
 
-If the required version is unavailable, confirm a compatible version with official support. Never substitute Note 4C firmware. This SDK repository does not perform firmware updates.
+```text
+212b467dbfa0f539bb041fb3d7240d7faaad6df6fc534c2e9ee8b6e99a14aa4f
+```
 
-Checked on 2026-10-19. The current official Wiki and Cloud UI remain authoritative for labels and available versions.
+This is a full image written at **0x0**, not an OTA application image. **Full flashing clears existing configuration; configure Wi-Fi again after boot.** Save important data first. Use Chrome or Edge and a USB data cable, follow the official full-image flashing procedure, and keep power connected until verification completes.
+
+Old and new hardware use the same Chinese full image. New boards with external flash require matching multilingual resources to be present. If resources are missing or incompatible, the device maintainer must initialize them using the complete upgrade tools. This source repository includes no firmware binary, flashing tool or external resource, and never flashes automatically.
+
+With “Keep connected” (联网保持) enabled under Settings → Network Sync, the manager can connect to an idle device. With it disabled, the device may sleep offline; choose “Connect to manager” on the device. Remote sessions stay connected. See [README](../README.en.md) for first-time connection and listener setup.
+
+Updated from the 2026-11-03 delivery. No hardware flashing or device validation was performed for this repository update. Check matching firmware metadata rather than assuming compatibility from version ordering.

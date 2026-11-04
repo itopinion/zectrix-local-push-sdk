@@ -15,6 +15,7 @@ pub const RESULT: u8 = 13;
 pub const KEY: u8 = 14;
 pub const STATUS: u8 = 15;
 pub const PALETTE: u8 = 16;
+pub const CONNECT_REQUEST: u8 = 17;
 #[derive(Clone, Debug)]
 pub struct Packet {
     pub kind: u8,

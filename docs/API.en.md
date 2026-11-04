@@ -34,6 +34,18 @@ The target may be an IPv4 address, IPv4:port, a 12-character device ID, or omitt
 
 The SDK rejects devices with an incompatible reserved display region. A connection reads PALETTE after CONNECT. Missing or invalid palette data fails setup and releases ownership. No guessed fallback is used. Reopening reads a fresh palette.
 
+## Device-initiated connections
+
+```rust
+let mut listener = zectrix_sdk::ConnectionRequestListener::bind().await?;
+let request = listener.next_request().await?;
+let device = request.accept("My Manager").await?;
+```
+
+Bind once per host to IPv4 UDP 32343; device media communication continues on UDP 32342. `bind()` returns port conflicts to the caller. `next_request()` validates and deduplicates requests by source address and connection ID, retaining up to 256 entries for 60 seconds. Waiting can be cancelled. `ConnectionRequest` exposes `address` and `connection_id`; `accept()` consumes the request and connects back with that exact ID. A request expires after 10 seconds. Failure does not create a new request or substitute another connection ID.
+
+Initially run the `manager` example with the device IP to let it remember the manager address. Later run it without a target and select “Connect to manager” on the device. The device waits up to 10 seconds and retries every two seconds. Cancellation or expiry invalidates the old ID. Process restart, network recovery and session loss do not automatically generate a new request. Keep receiving while busy and discard requests the application cannot serve. The SDK does not automatically discover, pair, approve or reconnect on the listener's behalf. The complete control loop is in `examples/manager.rs`.
+
 ## Images and grayscale
 
 Only PNG is accepted: at most 8 MiB encoded and 4096×4096 decoded. Supply 400×300 for exact coordinates. Other sizes are fitted proportionally and centered on white; a legacy 400×268 image is treated as an ordinary smaller image.
@@ -69,7 +81,7 @@ let clip = zectrix_sdk::AudioClip { samples };
 let end = device.play(&clip, 90).await?;
 ```
 
-Empty audio returns `InvalidAudio`. More than 1,920,000 samples returns `AudioTooLong`. The protocol limit is 120 seconds, measured from preparation; clips close to the limit may end as `Limit`.
+Empty audio returns `InvalidAudio`. Recording and playback no longer have a fixed 120-second limit. `AudioTooLong` means the sample count would exceed the protocol’s `u32` frame counter. Heartbeat, stream-stall, final-packet and cleanup timeouts still apply. Clips and recording results reside in host memory, so available memory also limits duration. Both firmware and SDK must be updated; older versions may still reject or truncate long audio. `Limit` refers to protocol counter boundaries or cleanup timeouts, not a fixed 120-second limit.
 
 `PlaybackEnd` is `Completed`, `Stopped`, `Interrupted` or `Limit`. Recording gestures and audible firmware reminders can interrupt playback. Only one playback is active per connection; additional requests return `Busy`, without an automatic queue. Encoding runs in a background worker and does not block event reception. Dropping the play future does not stop playback; call `stop()` explicitly.
 
@@ -89,6 +101,8 @@ while let Some(event) = device.next_event().await? {
 
 Keys are `Up`, `Down`, `Confirm`; actions are `Short`, `Long`. Firmware sends Confirm short presses and Up/Down short or long presses. Confirm hold and the combined exit gesture are handled by recording/disconnection behavior. Use short-press filtering when assigning normal page navigation.
 
+While a firmware 3.7.5 to-do notification is visible, a new Confirm press first stops its sound; a short press completes that item and dismisses the notification on success. A long press neither completes the item nor starts recording. This entire gesture is consumed by the firmware rather than delivered as SDK key/recording events. Automatic dismissal does not complete an item, and a recording started before the notification can still finish normally.
+
 There is no remote-start recording API. Holding Confirm triggers recording on the device. The firmware displays its recording banner and plays the prompt before microphone capture; releasing during preparation may cancel it. `RecordingStarted` describes actual incoming audio, not merely the button gesture. The SDK can infer start from early audio data, deduplicates termination, reorders packets, conceals losses and trims frame padding. Recordings are processed voice audio, not raw ADC samples.
 
 `RecordingFinished` delivers at most one full or partial clip per recording; zero audio frames can yield `None`. Reasons are `Completed`, `Stopped`, `Limit`, `Disconnected`, `Failed`. Move slow file processing away from the event-consumer loop.
@@ -105,4 +119,4 @@ One task consumes events; other tasks may display, play, stop or query using the
 
 ## Further reference
 
-Generate the full Rust API reference with `cargo doc --locked --no-deps`. The [Chinese API document](API.md) and [binary protocol HTML](zectrix-lan-v1.html) contain further firmware interaction details. This guide describes the SDK 0.1.0 snapshot paired with firmware 3.7.2.
+Generate the full Rust API reference with `cargo doc --locked --no-deps`. The [Chinese API document](API.md) and [binary protocol HTML](zectrix-lan-v1.html) contain further firmware interaction details. This guide describes the SDK 0.2.0 snapshot paired with firmware 3.7.5.

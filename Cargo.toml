@@ -1,6 +1,6 @@
 [package]
 name = "zectrix-sdk"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Zectrix LAN device SDK: images, PCM audio and button events"
@@ -33,3 +33,7 @@ path = "examples/keys.rs"
 [[example]]
 name = "status"
 path = "examples/status.rs"
+
+[[example]]
+name = "manager"
+path = "examples/manager.rs"

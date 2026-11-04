@@ -2,14 +2,18 @@ use crate::{AudioClip, Error, RecordingEnd, Result};
 use std::collections::BTreeMap;
 use tokio::time::{Duration, Instant};
 pub const FRAME: usize = 960;
-pub const MAX_SAMPLES: usize = 16000 * 120;
+// No duration policy. AUDIO_END carries a u32 frame count, not a byte count.
+pub fn check_length(samples: usize) -> Result<()> {
+    if samples.div_ceil(FRAME) > u32::MAX as usize {
+        return Err(Error::AudioTooLong);
+    }
+    Ok(())
+}
 pub fn encode(audio: &AudioClip) -> Result<Vec<Vec<u8>>> {
     if audio.samples.is_empty() {
         return Err(Error::InvalidAudio("没有样本".into()));
     }
-    if audio.samples.len() > MAX_SAMPLES {
-        return Err(Error::AudioTooLong);
-    }
+    check_length(audio.samples.len())?;
     let mut enc =
         opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Audio).map_err(err)?;
     enc.set_dtx(false).map_err(err)?;
@@ -29,7 +33,6 @@ fn err(e: opus::Error) -> Error {
 pub struct Recording {
     pub id: u32,
     pub progress: Instant,
-    pub started: Instant,
     decoder: opus::Decoder,
     frames: BTreeMap<u32, Vec<u8>>,
     next: u32,
@@ -43,7 +46,6 @@ impl Recording {
         Ok(Self {
             id,
             progress: Instant::now(),
-            started: Instant::now(),
             decoder: opus::Decoder::new(16000, opus::Channels::Mono).map_err(err)?,
             frames: BTreeMap::new(),
             next: 0,
@@ -55,8 +57,8 @@ impl Recording {
     }
     pub fn push(&mut self, seq: u32, data: &[u8]) -> Result<()> {
         if seq < self.next
-            || seq >= 2000
-            || seq >= self.next + 6
+            || seq == u32::MAX
+            || seq - self.next >= 6
             || self.frames.contains_key(&seq)
             || self.end.as_ref().is_some_and(|e| seq >= e.0)
         {
@@ -76,7 +78,7 @@ impl Recording {
     }
     fn drain(&mut self, force: bool) -> Result<()> {
         let limit = self.end.as_ref().map(|e| e.0);
-        while self.next < 2000 && limit.is_none_or(|n| self.next < n) {
+        while self.next < u32::MAX && limit.is_none_or(|n| self.next < n) {
             let present = self.frames.contains_key(&self.next);
             if !present
                 && !(force && (limit.is_some() || !self.frames.is_empty())
@@ -87,6 +89,9 @@ impl Recording {
                 break;
             }
             if !self.last.is_empty() {
+                self.pcm
+                    .try_reserve(self.last.len())
+                    .map_err(|_| Error::InvalidAudio("录音缓冲内存不足".into()))?;
                 self.pcm.extend_from_slice(&self.last);
             }
             let data = self.frames.remove(&self.next).unwrap_or_default();
@@ -101,7 +106,9 @@ impl Recording {
         Ok(())
     }
     pub fn ending(&mut self, total: u32, tail: u16, reason: RecordingEnd) -> Result<()> {
-        if total > 2000
+        // Do not let a forged END synthesize an unbounded amount of PLC.
+        // The sender can only finish within the existing six-frame tail window.
+        if (total > self.next && total - self.next > 6)
             || (total == 0 && tail != 0)
             || (total > 0 && !(1..=960).contains(&tail))
             || total < self.next
@@ -133,13 +140,17 @@ impl Recording {
     }
     pub fn finish(mut self, fallback: RecordingEnd) -> (Option<AudioClip>, RecordingEnd) {
         let _ = self.drain(true);
-        let (tail, reason) = self
+        let (tail, mut reason) = self
             .end
             .as_ref()
             .map(|e| (e.1 as usize, e.2))
             .unwrap_or((self.last.len(), fallback));
-        self.pcm
-            .extend_from_slice(&self.last[..tail.min(self.last.len())]);
+        let tail = &self.last[..tail.min(self.last.len())];
+        if self.pcm.try_reserve(tail.len()).is_ok() {
+            self.pcm.extend_from_slice(tail);
+        } else {
+            reason = RecordingEnd::Failed;
+        }
         (
             if self.pcm.is_empty() {
                 None
@@ -188,12 +199,60 @@ mod tests {
         assert!(r.finish(RecordingEnd::Failed).0.is_none());
     }
     #[test]
-    fn oversized_audio_is_rejected() {
-        assert!(matches!(
-            encode(&AudioClip {
-                samples: vec![0; MAX_SAMPLES + 1]
-            }),
-            Err(Error::AudioTooLong)
-        ));
+    fn frame_count_is_checked_without_allocating_audio() {
+        assert!(check_length(16000 * 181).is_ok());
+        if usize::BITS > 32 {
+            let max = u32::MAX as u64 * FRAME as u64;
+            assert!(check_length(max as usize).is_ok());
+            assert!(matches!(
+                check_length((max + 1) as usize),
+                Err(Error::AudioTooLong)
+            ));
+        }
+    }
+
+    #[tokio::test]
+    async fn three_minute_recording_round_trip_keeps_the_tail() {
+        let samples = 16000 * 181 + 123;
+        let frames = encode(&AudioClip {
+            samples: vec![300; samples],
+        })
+        .unwrap();
+        assert!(frames.len() > 2000);
+        let mut r = Recording::new(7).unwrap();
+        for (seq, data) in frames.iter().enumerate() {
+            r.push(seq as u32, data).unwrap();
+        }
+        r.ending(
+            frames.len() as u32,
+            ((samples - 1) % FRAME + 1) as u16,
+            RecordingEnd::Completed,
+        )
+        .unwrap();
+        assert!(r.ready().unwrap());
+        let (audio, reason) = r.finish(RecordingEnd::Failed);
+        assert_eq!(reason, RecordingEnd::Completed);
+        assert_eq!(audio.unwrap().samples.len(), samples);
+    }
+
+    #[tokio::test]
+    async fn end_window_and_frame_counter_do_not_wrap() {
+        let mut r = Recording::new(8).unwrap();
+        assert!(r.ending(u32::MAX, 960, RecordingEnd::Completed).is_err());
+        let frames = encode(&AudioClip {
+            samples: vec![100; FRAME],
+        })
+        .unwrap();
+        r.next = u32::MAX - 2;
+        r.push(u32::MAX, &frames[0]).unwrap(); // No representable END count.
+        assert!(r.frames.is_empty());
+        r.push(u32::MAX - 2, &frames[0]).unwrap();
+        r.push(u32::MAX - 1, &frames[0]).unwrap();
+        r.ending(u32::MAX, 123, RecordingEnd::Completed).unwrap();
+        assert!(r.ready().unwrap());
+        assert_eq!(
+            r.finish(RecordingEnd::Failed).0.unwrap().samples.len(),
+            FRAME + 123
+        );
     }
 }

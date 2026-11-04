@@ -230,6 +230,43 @@ impl Device {
             ));
         }
         let (summary, socket, id) = available.into_values().next().unwrap();
+        Self::finish_open(summary, socket, id, name).await
+    }
+
+    pub(crate) async fn open_requested(
+        address: std::net::SocketAddr,
+        id: u64,
+        name: String,
+    ) -> Result<Self> {
+        if name.is_empty() || name.len() > 48 || name.chars().any(char::is_control) {
+            return Err(Error::InvalidOptions(
+                "管理端名称应为 1～48 字节且不含控制字符".into(),
+            ));
+        }
+        let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
+        socket.connect(address).await?;
+        let response = exchange(
+            &socket,
+            &Packet::new(INFO, 0, 1, vec![]),
+            Duration::from_secs(2),
+        )
+        .await?;
+        if response.connection != id {
+            return Err(Error::Disconnected);
+        }
+        let summary = info(&response, address.to_string())?;
+        if summary.busy {
+            return Err(Error::Busy);
+        }
+        Self::finish_open(summary, socket, id, name).await
+    }
+
+    async fn finish_open(
+        summary: DeviceSummary,
+        socket: Arc<UdpSocket>,
+        id: u64,
+        name: String,
+    ) -> Result<Self> {
         let mut guard = OpenGuard {
             socket: socket.clone(),
             id,
@@ -369,9 +406,7 @@ impl Device {
         if audio.samples.is_empty() {
             return Err(Error::InvalidAudio("没有样本".into()));
         }
-        if audio.samples.len() > audio::MAX_SAMPLES {
-            return Err(Error::AudioTooLong);
-        }
+        audio::check_length(audio.samples.len())?;
         let permit = self
             .wire
             .play_gate
@@ -708,7 +743,7 @@ async fn receive(wire: Arc<Wire>, tx: mpsc::Sender<Event>) {
                 if let Some(r)=recording.as_mut(){
                     r.stopped=wire.stopped_capture.load(Ordering::SeqCst)==r.id;
                     match r.ready(){Ok(true)=>finish=Some(RecordingEnd::Completed),Err(_)=>finish=Some(RecordingEnd::Failed),_=>{}}
-                    if r.progress.elapsed()>Duration::from_secs(3)||r.started.elapsed()>Duration::from_secs(125){finish=Some(RecordingEnd::Failed);}
+                    if r.progress.elapsed()>Duration::from_secs(3){finish=Some(RecordingEnd::Failed);}
                 }
                 if let Some(why)=finish{let r=recording.take().unwrap();ended=ended.max(r.id);if !finish_recording(&wire,&tx,r,why){break DisconnectReason::Failed;}}
             },

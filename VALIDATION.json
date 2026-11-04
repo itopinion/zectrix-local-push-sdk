@@ -1,19 +1,21 @@
 {
-  "date": "2026-10-19",
+  "date": "2026-11-04",
   "platform": "macos-aarch64",
-  "source_snapshot": "2026-10-16 SDK 0.1.0 / FW 3.7.2",
+  "source_snapshot": "2026-11-03 SDK 0.2.0 / FW 3.7.5 zh-CN",
   "checks": {
-    "source_examples_tests_byte_identical": true,
+    "source_and_six_examples_byte_identical": true,
+    "existing_udp_regression_tests_retained": true,
     "firmware_and_flash_tools_excluded": true,
     "local_markdown_links": true,
     "cargo_test_locked": {
-      "unit_passed": 16,
+      "unit_passed": 18,
       "udp_integration_passed": 10
     },
-    "cargo_check_locked_examples": true,
+    "cargo_build_locked_examples": true,
     "cargo_doc_locked_no_deps": true
   },
-  "environment_note": "Tests used a prepared offline dependency cache and CMAKE_POLICY_VERSION_MINIMUM=3.5; first-time builds may need internet.",
-  "hardware_test_this_extraction": false,
-  "firmware_flashed": false
+  "environment_note": "Rust stable 1.99.1 and CMake 3.31.10; first-time builds require dependencies. No device connection was made.",
+  "hardware_test_this_update": false,
+  "firmware_flashed": false,
+  "source_license_note": "The SDK delivery manifest lists LICENSE but the supplied directory omits it. The existing repository LICENSE was retained and its SHA-256 matches the delivery manifest."
 }

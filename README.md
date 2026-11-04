@@ -4,17 +4,19 @@
 
 让你的应用或 AI Agent 通过局域网直接连接 ZECTRIX Note 4：推送黑白、四灰阶和十六灰阶图片，播放音频，接收按键及录音。
 
-本仓库提供 Rust SDK 源码、五个可编译运行的示例和协议文档，不包含固件二进制、烧录工具或桌面安装程序。
+本仓库提供 Rust SDK 源码、六个可编译运行的示例和协议文档，不包含固件二进制、烧录工具或桌面安装程序。
 
-SDK 版本为 **0.1.0**，来源为 **2026-10-16 / 固件 3.7.2** 交付包。Rust crate 名仍为 `zectrix-sdk`，避免现有调用代码改名。此版本尚未发布到 crates.io。
+SDK 版本为 **0.2.0**，来源为 **2026-11-03 / 中文固件 3.7.5** 交付包。Rust crate 名仍为 `zectrix-sdk`，避免现有调用代码改名。此版本尚未发布到 crates.io。
 
 ## 设备准备与固件升级
 
-支持设备：**ZECTRIX Note 4（zectrix-s3-epaper-4.2），400×300**。本版本配套固件为 **3.7.2**；不自动承诺其他固件版本兼容，也不适用于 Note 4C。
+支持设备：**ZECTRIX Note 4（zectrix-s3-epaper-4.2），400×300**。本版本配套固件为 **3.7.5（zh-CN）**；不自动承诺其他固件版本兼容，也不适用于 Note 4C。
 
 使用 Chrome 或 Edge 登录 [极趣云](https://cloud.zectrix.com/)，进入“本地升级”，用 USB 数据线连接 Note 4，选择匹配版本并按官方说明刷写。详见 [固件升级（中文）](docs/FIRMWARE.md) / [Firmware update (English)](docs/FIRMWARE.en.md) 和 [官方固件升级说明](https://wiki.zectrix.com/zh/software/firmware)。
 
-升级后，在设备的“设置 → 网络同步”中启用“待机保持 Wi-Fi”功能。
+本次提供[中文完整固件 3.7.5](https://wiki.zectrix.com/downloads/firmware/full_3.7.5.bin)。**完整烧录会清除现有配置，启动后需要重新配网。** 文件大小和 SHA-256 见 [compatibility.json](compatibility.json)，具体升级条件见 [固件说明](docs/FIRMWARE.md)。
+
+设备“设置 → 网络同步”中的“联网保持”开启时，管理端可主动连接空闲设备；关闭后设备可能断网休眠，需要在设备端发起连接。远程会话期间仍保持联网。
 
 ## 快速开始
 
@@ -71,6 +73,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `keys` | 接收设备按键、退出事件 |
 | `recorder` | 接收设备按键触发的录音并保存 WAV |
 | `play` | 播放示例 PCM 音频 |
+| `manager` | 管理端主动连接，以及接收设备端连接请求 |
+
+## 0.2.0 与设备端发起连接
+
+首次运行以下命令，让设备记住管理端地址：
+
+```sh
+cargo run --locked --example manager -- 192.168.1.100
+```
+
+以后运行 `cargo run --locked --example manager` 保持监听，再在设备选择“设置 → 网络同步 → 连接管理端”。管理端监听 UDP **32343**，设备通信使用 UDP **32342**；防火墙需允许相应通信。管理端地址变化后，先指定设备 IP 主动连接一次。同一主机只运行一个连接请求监听器；它不会自动发现、配对或接管其他会话。
+
+新增 `ConnectionRequestListener` 和 `ConnectionRequest::accept()`，参见 [API](docs/API.md)。配套更新固件和 SDK 后，录音与播放不再受固定 120 秒上限限制，但仍受协议计数、主机内存和超时约束。
+
+固件 3.7.5 的待办通知可见时，确认键按下先停声，短按完成待办；长按不完成待办，也不启动录音，该次手势不向 SDK 上报。其他变化见[固件更新说明](docs/RELEASE_NOTES_3.7.5.md)。
 
 ## 交给 Agent 开发
 
@@ -96,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [兼容性清单](compatibility.json) / [本次验证记录](VALIDATION.json)
 - `python3 scripts/verify.py`：核对本仓库文件清单与 SHA-256（Python 3 仅用于校验，不是 SDK 运行依赖）
 
-源码、示例与测试保留上游实现；固件、烧录工具、资源二进制、旧固件路径清单和生成式 rustdoc 文件均未打包。修改源码后需由维护者重新生成 SDK_MANIFEST.json 和 SHA256SUMS。
+源码与六个示例来自 2026-11-03 交付包；保留仓库现有本机 UDP 回归测试。固件、烧录工具、资源二进制和生成式 rustdoc 文件均未打包。修改源码后需由维护者重新生成 SDK_MANIFEST.json 和 SHA256SUMS。
 
 ## 许可
 

@@ -4,17 +4,19 @@
 
 Connect your application or AI agent directly to a ZECTRIX Note 4 over your local network. Send monochrome, 4-level and 16-level grayscale images, play audio, and receive button and recording events.
 
-This repository contains Rust SDK source, five buildable examples and protocol documentation. It does not distribute device firmware, flashing tools or a desktop installer.
+This repository contains Rust SDK source, six buildable examples and protocol documentation. It does not distribute device firmware, flashing tools or a desktop installer.
 
-SDK version: **0.1.0**, extracted from the **2026-10-16 / firmware 3.7.2** delivery. The Rust crate remains named `zectrix-sdk` for compatibility. It has not been published to crates.io.
+SDK version: **0.2.0**, extracted from the **2026-11-03 / Chinese firmware 3.7.5** delivery. The Rust crate remains named `zectrix-sdk` for compatibility. It has not been published to crates.io.
 
 ## Device setup and firmware
 
-Supported device: **ZECTRIX Note 4 (zectrix-s3-epaper-4.2), 400×300**. The matching firmware for this SDK snapshot is **3.7.2**. Compatibility with other versions is not assumed. Note 4C is not supported by this package.
+Supported device: **ZECTRIX Note 4 (zectrix-s3-epaper-4.2), 400×300**. The matching firmware for this SDK snapshot is **3.7.5 (zh-CN)**. Compatibility with other versions is not assumed. Note 4C is not supported by this package.
 
 Open [ZECTRIX Cloud](https://cloud.zectrix.com/) in Chrome or Edge, sign in, select **Local Upgrade**, connect Note 4 with a USB data cable, and follow the official instructions for the matching firmware. See [Firmware update](docs/FIRMWARE.en.md), [中文升级说明](docs/FIRMWARE.md), and the [official firmware guide](https://wiki.zectrix.com/zh/software/firmware).
 
-After updating, enable **Keep Wi-Fi on during standby** (待机保持 Wi-Fi) under **Settings → Network Sync** (设置 → 网络同步) on the device.
+Download the [Chinese full firmware 3.7.5](https://wiki.zectrix.com/downloads/firmware/full_3.7.5.bin). **Full flashing clears existing configuration; configure Wi-Fi again after boot.** See [compatibility.json](compatibility.json) for its size and SHA-256, and [firmware setup](docs/FIRMWARE.en.md) for hardware requirements.
+
+With **Keep connected** (联网保持) enabled under Settings → Network Sync, the manager can initiate a connection to an idle device. With it disabled, the device may disconnect and sleep; initiate the connection from the device instead. Remote sessions keep the network connected.
 
 ## Quick start
 
@@ -71,6 +73,15 @@ Long-running applications must also keep consuming `next_event()` to handle butt
 | `keys` | Receive button and disconnect events |
 | `recorder` | Receive a device-triggered recording and save a WAV |
 | `play` | Play sample PCM audio |
+| `manager` | Initiate connections and accept device-originated connection requests |
+
+## Version 0.2.0 and device-initiated connections
+
+First run `cargo run --locked --example manager -- 192.168.1.100` with your device IP so the device remembers the manager address. Later, run `cargo run --locked --example manager` to listen, then select **Settings → Network Sync → Connect to manager** (设置 → 网络同步 → 连接管理端) on the device. If the manager address changes, explicitly connect with the device IP again.
+
+The listener uses UDP **32343**; device communication uses UDP **32342**. Allow these through the host firewall. Run only one listener per host. It does not automatically discover, pair with or reclaim devices. The new APIs are `ConnectionRequestListener` and `ConnectionRequest::accept()`; see the [API guide](docs/API.en.md).
+
+With matching firmware and SDK, recording and playback no longer have a fixed 120-second limit. Protocol counters, host memory and timeout limits still apply. While a firmware 3.7.5 to-do notification is visible, pressing Confirm stops its sound; a short press completes the item. A long press neither completes it nor starts recording, and this gesture is not delivered to the SDK. See the [firmware release notes](docs/RELEASE_NOTES_3.7.5.md) for other changes.
 
 ## Build with your agent
 
@@ -96,7 +107,7 @@ Example prompt:
 - [Compatibility metadata](compatibility.json) / [Validation record](VALIDATION.json)
 - `python3 scripts/verify.py`: verify the file inventory and SHA-256 hashes (Python 3 is only needed for this check)
 
-Upstream source, examples and tests are preserved. Firmware, flashing tools, resource binaries, obsolete firmware-path inventories and generated rustdoc assets are excluded. Maintainers must regenerate SDK_MANIFEST.json and SHA256SUMS after source changes.
+Source and six examples come from the 2026-11-03 delivery; existing loopback UDP regression tests are retained. Firmware, flashing tools, resource binaries and generated rustdoc assets are excluded. Maintainers must regenerate SDK_MANIFEST.json and SHA256SUMS after source changes.
 
 ## License
 
